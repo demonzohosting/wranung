@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kedai Anung - Pesan & Antrian</title>
+  <style>
+    :root{--accent:#c1531b;--muted:#666}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin:0;background:#fff;color:#111}
+    .wrap{max-width:980px;margin:20px auto;padding:20px}
+    header{display:flex;gap:14px;align-items:center}
+    .logo{width:72px;height:72px;border-radius:12px;overflow:hidden}
+    .logo img{width:100%;height:100%;object-fit:contain}
+    h1{margin:0;font-size:22px;color:var(--accent)}
+    p.lead{margin:4px 0 12px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px}
+    .item{background:#fff;border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(16,24,40,0.06);display:flex;flex-direction:column;gap:8px}
+    .iname{font-weight:700}
+    .qty-row{display:flex;align-items:center;gap:8px}
+    .btn-qty{width:34px;height:34px;border-radius:8px;border:1px solid #eee;background:#fafafa;cursor:pointer}
+    .qty-display{min-width:36px;text-align:center}
+    input.note{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e6e6}
+    .cart{margin-top:18px;background:#f8fafb;padding:14px;border-radius:12px}
+    .cart-list{min-height:60px}
+    .cart-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed #eee}
+    .cart-item-meta{font-size:14px;color:#222}
+    .cart-item-note{font-size:13px;color:var(--muted);margin-top:4px}
+    .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .btn{background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px;border:none;cursor:pointer}
+    .btn.secondary{background:#ef4444}
+    .queue{margin-top:20px}
+    .queue-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+    .qcard{background:#fff;border-radius:10px;padding:12px;box-shadow:0 6px 18px rgba(16,24,40,0.06)}
+    .qhead{display:flex;gap:12px;align-items:center}
+    .badge{background:#f3f4f6;padding:8px 10px;border-radius:8px;font-weight:700}
+    .qmeta{font-size:13px;color:var(--muted)}
+    .qitems{margin-top:8px;font-size:14px}
+    .muted{color:var(--muted)}
+    footer{margin-top:28px;text-align:center;color:var(--muted);font-size:13px;padding-bottom:30px}
+    @media (max-width:520px){header{flex-direction:column;align-items:flex-start}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">
+        <!-- Logo: pakai URL Discord sesuai request -->
+        <img src="https://cdn.discordapp.com/attachments/1274240418141175840/1428309417585152133/c1686154-1056-44a2-acf7-c6bfb5e4481a.png?ex=68f2084d&is=68f0b6cd&hm=7f20839695939f32e67a24a28fef99151d54d107b1f33205319fd08b9edbcb10&" alt="Logo Kedai Anung">
+      </div>
+      <div>
+        <h1>Kedai Anung</h1>
+        <p class="lead">Pilih beberapa menu, tunggu sampai warung membalas</p>
+      </div>
+    </header>
+
+    <!-- MENU -->
+    <section>
+      <h2 style="margin-top:18px">Menu</h2>
+      <div class="grid" id="menu-grid"></div>
+    </section>
+
+    <!-- CART -->
+    <section class="cart" id="cart">
+      <h3>Keranjang Pesanan</h3>
+      <div class="cart-list" id="cart-list"><div class="muted">Belum ada item di keranjang.</div></div>
+
+      <div class="actions">
+        <button class="btn secondary" id="clear-cart">Bersihkan</button>
+        <button class="btn" id="send-order">Pesan via WhatsApp</button>
+      </div>
+      <p class="muted" style="margin-top:8px">Catatan: Setelah mengirim, nomor antrian akan bertambah dan disimpan. Antrian bersifat read-only (tidak dapat dihapus dari web).</p>
+    </section>
+
+    <!-- QUEUE -->
+    <section class="queue" id="queue-section">
+      <h3>📋 Daftar Antrian (Read-only)</h3>
+      <div class="queue-list" id="queue-list">
+        <div class="muted">Belum ada antrian.</div>
+      </div>
+    </section>
+
+    <footer>&copy; Kedai Anung</footer>
+  </div>
+
+  <script>
+    // ---------------- CONFIG ----------------
+    // Ganti dengan nomor WhatsApp tujuan (format internasional tanpa +)
+    const ownerPhone = '6281929482402';
+
+    // Data menu awal (sesuaikan jika perlu)
+    const menuData = [
+      { id: 'mie',     name: 'Mie' },
+      { id: 'kopi_aceh', name: 'Kopi Aceh' },
+      { id: 'kopi_gooday', name: 'Kopi Gooday' },
+      { id: 'kopi_hitam', name: 'Kopi Hitam' },
+      { id: 'es_jeruk', name: 'Es Jeruk' },
+      { id: 'jeruk_panas', name: 'Jeruk Panas' },
+      { id: 'es_teh',   name: 'Es Teh' },
+      { id: 'temulawak', name: 'Temulawak' }
+    ];
+
+    // ---------------- Storage keys ----------------
+    const QUEUE_KEY = 'kedai_anung_queue_online_like'; // menyimpan array antrian
+    const COUNTER_KEY = 'kedai_anung_counter'; // menyimpan counter nomor antrian (never reset)
+
+    // Load queue & counter from localStorage
+    let queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+    let counter = parseInt(localStorage.getItem(COUNTER_KEY) || '0', 10);
+
+    // Keranjang sementara (di session page)
+    const cart = {}; // {itemId: {qty: n, note: '...'}}
+
+    // DOM refs
+    const menuGrid = document.getElementById('menu-grid');
+    const cartListEl = document.getElementById('cart-list');
+    const clearCartBtn = document.getElementById('clear-cart');
+    const sendOrderBtn = document.getElementById('send-order');
+    const queueListEl = document.getElementById('queue-list');
+
+    // ---------- Helper ----------
+    function saveQueue() {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    }
+    function saveCounter() {
+      localStorage.setItem(COUNTER_KEY, String(counter));
+    }
+    function formatTime(iso) {
+      const d = new Date(iso);
+      return d.toLocaleString('id-ID');
+    }
+
+    // ---------- Render Menu ----------
+    function renderMenu() {
+      menuGrid.innerHTML = '';
+      menuData.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.innerHTML = `
+          <div class="iname">${escapeHtml(item.name)}</div>
+          <div class="muted">Tambah jumlah & catatan</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <button class="btn-qty" data-id="${item.id}" data-action="dec">-</button>
+            <div class="qty-display" id="qty-${item.id}">0</div>
+            <button class="btn-qty" data-id="${item.id}" data-action="inc">+</button>
+          </div>
+          <input class="note" id="note-${item.id}" placeholder="Catatan untuk ${escapeHtml(item.name)} (opsional)" />
+        `;
+        menuGrid.appendChild(el);
+      });
+
+      // delegation for qty buttons
+      menuGrid.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('.btn-qty');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const action = btn.dataset.action;
+        const current = (cart[id] && cart[id].qty) ? cart[id].qty : 0;
+        let next = current;
+        if (action === 'inc') next = current + 1;
+        else next = Math.max(0, current - 1);
+
+        if (next === 0) {
+          delete cart[id];
+        } else {
+          const existingNote = document.getElementById('note-' + id).value || '';
+          cart[id] = { qty: next, note: existingNote };
+        }
+        document.getElementById('qty-' + id).textContent = String(next);
+        renderCart();
+      });
+
+      // keep note changes in cart if user types
+      menuGrid.addEventListener('input', (ev) => {
+        const input = ev.target;
+        if (!input || !input.id) return;
+        if (!input.id.startsWith('note-')) return;
+        const id = input.id.replace('note-','');
+        const val = input.value;
+        if (cart[id]) cart[id].note = val;
+      });
+    }
+
+    // ---------- Render Cart ----------
+    function renderCart() {
+      const keys = Object.keys(cart);
+      if (keys.length === 0) {
+        cartListEl.innerHTML = '<div class="muted">Belum ada item di keranjang.</div>';
+        return;
+      }
+      cartListEl.innerHTML = '';
+      keys.forEach(id => {
+        const it = menuData.find(m => m.id === id);
+        const row = document.createElement('div');
+        row.className = 'cart-row';
+        row.innerHTML = `
+          <div>
+            <div class="cart-item-meta">${escapeHtml(it.name)} &times; ${cart[id].qty}</div>
+            <div class="cart-item-note">${escapeHtml(cart[id].note || '')}</div>
+          </div>
+          <div style="min-width:120px;text-align:right">
+            <button class="btn" data-action="edit" data-id="${id}" style="background:#6b7280;padding:8px 10px;border-radius:8px">Edit</button>
+            <button class="btn secondary" data-action="remove" data-id="${id}" style="margin-left:6px;padding:8px 10px;border-radius:8px">Hapus</button>
+          </div>
+        `;
+        cartListEl.appendChild(row);
+      });
+
+      // attach handlers for edit/remove
+      cartListEl.querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', (e) => {
+          const action = b.dataset.action;
+          const id = b.dataset.id;
+          if (action === 'remove') {
+            // remove from cart only (not from queue): set qty 0 and clear UI
+            delete cart[id];
+            const qtyEl = document.getElementById('qty-' + id);
+            if (qtyEl) qtyEl.textContent = '0';
+            const noteEl = document.getElementById('note-' + id);
+            if (noteEl) noteEl.value = '';
+            renderCart();
+          } else if (action === 'edit') {
+            // focus note input for that item
+            const noteEl = document.getElementById('note-' + id);
+            if (noteEl) noteEl.focus();
+          }
+        });
+      });
+    }
+
+    // ---------- Render Queue (read-only) ----------
+    function renderQueue() {
+      queueListEl.innerHTML = '';
+      if (queue.length === 0) {
+        queueListEl.innerHTML = '<div class="muted">Belum ada antrian.</div>';
+        return;
+      }
+      queue.forEach((qObj, idx) => {
+        const card = document.createElement('div');
+        card.className = 'qcard';
+        const timeStr = formatTime(qObj.time);
+        const itemsStr = qObj.items.map(it => `${it.name} x${it.qty}${it.note ? ' ('+escapeHtml(it.note)+')' : ''}`).join(' • ');
+        card.innerHTML = `
+          <div class="qhead">
+            <div class="badge">#${qObj.number}</div>
+            <div style="text-align:left">
+              <div style="font-weight:700">${escapeHtml(qObj.name)}</div>
+              <div class="qmeta">${timeStr}</div>
+            </div>
+          </div>
+          <div class="qitems">${itemsStr}</div>
+        `;
+        queueListEl.appendChild(card);
+      });
+    }
+
+    // ---------- Build WhatsApp message ----------
+    function buildWhatsAppText(orderName, items, noteOverall) {
+      const lines = ['Halo, saya ingin memesan:'];
+      items.forEach(it => {
+        const n = it.name;
+        const q = it.qty;
+        const nt = it.note ? ` - ${it.note}` : '';
+        lines.push(`- ${n} x ${q}${nt}`);
+      });
+      if (orderName) lines.push(`\\nNama: ${orderName}`);
+      if (noteOverall) lines.push(`Catatan: ${noteOverall}`);
+      lines.push('\\nTerima kasih.');
+      return encodeURIComponent(lines.join('\\n'));
+    }
+
+    // ---------- Send Order: create queue entry (read-only), open WA, increment counter ----------
+    sendOrderBtn.addEventListener('click', () => {
+      // gather cart items
+      const keys = Object.keys(cart);
+      if (keys.length === 0) { alert('Keranjang kosong — pilih minimal 1 item.'); return; }
+      // ask buyer to enter name via prompt OR require a name? We'll prompt but use fallback 'Tanpa Nama'
+      let buyerName = prompt('Masukkan nama Anda (untuk antrian):', '') || '';
+      buyerName = buyerName.trim() || 'Tanpa Nama';
+      const overallNote = ''; // optional global note; could be added if wanted
+
+      // prepare items array
+      const items = keys.map(id => {
+        const m = menuData.find(x => x.id === id);
+        return { id, name: m.name, qty: cart[id].qty, note: cart[id].note || '' };
+      });
+
+      // increment counter and create queue object
+      counter = counter + 1;
+      saveCounter();
+      const qObj = {
+        id: Date.now() + Math.floor(Math.random()*999), // unique id
+        number: counter, // persistent increasing number
+        name: buyerName,
+        items: items,
+        note: overallNote,
+        time: (new Date()).toISOString()
+      };
+
+      // push to queue (persist)
+      queue.push(qObj);
+      saveQueue();
+      renderQueue();
+
+      // open WA with message
+      const waText = buildWhatsAppText(buyerName, items, overallNote);
+      const waUrl = `https://wa.me/${ownerPhone}?text=${waText}`;
+      window.open(waUrl, '_blank');
+
+      // clear current cart but keep queue intact (antrian read-only)
+      clearCart();
+      alert(`Pesanan terkirim. Nomor antrian Anda: #${qObj.number}`);
+    });
+
+    // ---------- Clear Cart ----------
+    function clearCart() {
+      // reset cart state and UI
+      Object.keys(cart).forEach(k => delete cart[k]);
+      menuData.forEach(m => {
+        const qtyEl = document.getElementById('qty-' + m.id);
+        const noteEl = document.getElementById('note-' + m.id);
+        if (qtyEl) qtyEl.textContent = '0';
+        if (noteEl) noteEl.value = '';
+      });
+      renderCart();
+    }
+    clearCartBtn.addEventListener('click', () => {
+      if (!confirm('Kosongkan keranjang?')) return;
+      clearCart();
+    });
+
+    // ---------- Utilities ----------
+    function escapeHtml(str){
+      if(!str) return '';
+      return String(str).replace(/[&<>\"']/g, function(s){
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":\"&#39;\"})[s];
+      });
+    }
+
+    // ---------- Init ----------
+    renderMenu();
+    renderCart();
+    renderQueue();
+  </script>
+</body>
+</html>
