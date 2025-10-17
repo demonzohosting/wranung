@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="id">
+<link rel="stylesheet" href="aos/aos.css"
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -30,9 +31,9 @@
 </head>
 <body>
   <div class="container">
-    <header>
+    <header data-aos="fade down">
       <div class="logo">
-        <img src="https://cdn.discordapp.com/attachments/1274240418141175840/1428309417585152133/c1686154-1056-44a2-acf7-c6bfb5e4481a.png?ex=68f2084d&is=68f0b6cd&hm=7f20839695939f32e67a24a28fef99151d54d107b1f33205319fd08b9edbcb10&" alt="Logo Kedai Anung" />
+        <img src="https://media.discordapp.net/attachments/1274240418141175840/1428309417585152133/c1686154-1056-44a2-acf7-c6bfb5e4481a.png?ex=68f359cd&is=68f2084d&hm=4a5cfcce15a4066bd55ecaa3647b9132757674051b40beaadf3ef8d3e0064bba&=&format=webp&quality=lossless&width=350&height=350" alt="Logo Kedai Anung" />
       </div>
       <div>
         <h1>Kedai Anung</h1>
@@ -61,12 +62,12 @@
         <div id="queue-list" class="muted">Belum ada antrian.</div>
       </div>
     </section>
-
+    
     <footer>
       &copy; Kedai Anung • Pemesanan otomatis via WhatsApp
     </footer>
   </div>
-
+  <link rel="stylesheet" href="aos/aos.jss">
   <script>
     const ownerPhone = '6281929482402'; // nomor WA tujuan
     const menuData = [
@@ -165,6 +166,12 @@
     createMenu();
     renderCart();
     renderQueue();
+  </script>
+  <script src="aos/aos.js"></script>
+  <script>
+    AOS.init ({
+      once: false
+    })
   </script>
 </body>
 </html>
